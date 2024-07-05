@@ -1,0 +1,17 @@
+#pragma once
+
+enum Enum_State{
+    IDLE = 0,
+    WORKING = 1,
+    MOTOR_CAL_MOVE_TO_MAX = 2,
+    MOTOR_CAL_MOVING_TO_MAX =3,
+    MOTOR_CAL_MOVE_TO_MIN = 4,
+    MOTOR_CAL_MOVING_TO_MIN = 5,
+    PID_CAL_ON_KP_RESET,
+    PID_CAL_KP,
+    PID_CAL_ON_KI_RESET,
+    PID_CAL_KI,
+    PID_CAL_ON_KD_RESET,
+    PID_CAL_KD,
+};
+

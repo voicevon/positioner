@@ -1,0 +1,1 @@
+[How to use the dev board](https://www.ti.com/lit/ug/slau533d/slau533d.pdf)

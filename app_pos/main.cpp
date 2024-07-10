@@ -11,6 +11,10 @@
 // GPIO寄存器说明:   https://blog.csdn.net/qq_43935020/article/details/113201733  
 
 
+
+
+
+
 // extern setup_keys();
 #include "app_hmi.h"
 
@@ -60,6 +64,7 @@ void main(void){
         TA0CCR1 = ccr1;
         if (TA0CCR1 > 999){
             TA0CCR1 = 0;
+            printf("hello");
         }
 
     }

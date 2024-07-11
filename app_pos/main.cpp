@@ -1,6 +1,7 @@
 #include "driverlib.h"
 #include "delay.h"
 #include "./ri_signal/pid/pid.h"
+#include "gpio.h"
 #include "timer_a.h"
 // #include "lcd.h"
 // #include "lcd_print.h"
@@ -13,6 +14,7 @@ extern void init_CLOCK(void);
 extern void init_GPIO(void);
 extern void init_ADC12(void);
 extern void init_PWM_TIMER_A0(void);
+extern int check_keys();
 
 enum Enum_State{
     IDLE = 0,
@@ -36,61 +38,6 @@ unsigned long adc_result[2] ={0, 0};
 Motor my_motor = Motor();
 signalx::PIDController my_pid_main = signalx::PIDController(1, 0, 0, 999,999);
 
-// signalx::Ax_B my_filter(1, 0);
-
-// 返回值： 0==没按下  1= 首次按下， 2= 保持按下
-int check_single_key(int io_num){
-	static int last_pressed_io_num = -1;
-	static int key_pressed_counter = 0;
-
-	// int level = gpio_get_level(GPIO_NUM_0);
-	int level = 1;
-	if (level == 1 ){
-		if (last_pressed_io_num == 9){
-			// 这个按钮刚才就被按下了
-			key_pressed_counter++;
-			if (key_pressed_counter >= 50){
-				return 2;
-			}
-		} else {
-			// 首次检测到这个按钮被按下
-			last_pressed_io_num = 9;
-			key_pressed_counter = 0;
-			return 1;
-		}
-	}
-	return 0;
-}
-
-// 返回值： 1,2,3,4 = 键值press,   5 = enter is hold.
-int check_keys(){
-	int result = check_single_key(1);
-	if (result ==1){
-		return 1;
-	}else if (result ==2){
-		return 5;
-	}
-
-	result = check_single_key(2);
-	if (result ==1){
-		return 2;
-	}else if (result ==2){
-		return 6;
-	}
-	result = check_single_key(3);
-	if (result ==1){
-		return 3;
-	}else if (result ==2){
-		return 7;
-	}
-	result = check_single_key(4);
-	if (result ==1){
-		return 4;
-	}else if (result ==2){
-		return 8;
-	}
-	return 0;
-}
 
 void to_state(Enum_State new_state){
 	// printf("g_state is chaning from:  %s  to:  %s", AppMain::GetStateName(g_state), AppMain::GetStateName(new_state));
@@ -171,29 +118,17 @@ void state_machine(){
 void main(void)
 {
     WDT_A_hold(WDT_A_BASE);
-    // my_filter.Reset();
-    // my_filter.SetKnownPoint(0, 0);
-    // my_filter.SetKnownPoint(4096, 1.0);
-
     init_CLOCK();
     init_GPIO();
-    init_ADC12();
-    init_PWM_TIMER_A0();
-    // LCD_init();
-    // LCD_clear_home();
-
-    // LCD_goto(0, 0);
-    // LCD_putstr("CH0:");
-
-    // LCD_goto(0, 1);
-    // LCD_putstr("CH1:");
+    // init_ADC12();
+    // init_PWM_TIMER_A0();
 
 
     while(1)
     {   
 
-        Timer_A_setCompareValue(TIMER_A0_BASE, TIMER_A_CAPTURECOMPARE_REGISTER_1, adc_result[1]);
-        Timer_A_setCompareValue(TIMER_A0_BASE, TIMER_A_CAPTURECOMPARE_REGISTER_2, adc_result[1]+ 1000);
+        // Timer_A_setCompareValue(TIMER_A0_BASE, TIMER_A_CAPTURECOMPARE_REGISTER_1, adc_result[1]);
+        // Timer_A_setCompareValue(TIMER_A0_BASE, TIMER_A_CAPTURECOMPARE_REGISTER_2, adc_result[1]+ 1000);
         state_machine();
 
         // 休眠，等待中断唤醒

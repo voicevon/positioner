@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "CCS Debug",
+            "type": "ccs-debug",
+            "request": "launch"
+        },
+        {
+            "name": "app_pos",
+            "type": "ccs-debug",
+            "request": "launch",
+            "project": "app_pos"
+        }
+    ]
+}

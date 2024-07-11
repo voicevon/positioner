@@ -87,7 +87,7 @@ void init_GPIO(void)
     // 开发板的 LED 输出
     GPIO_setAsOutputPin(GPIO_PORT_P4, GPIO_PIN7);
     // 键盘输入
-    GPIO_setAsInputPinWithPullUpResistor(GPIO_PORT_P2, GPIO_PIN2 | GPIO_PIN3 | GPIO_PIN4 |GPIO_PIN5);
+    GPIO_setAsInputPinWithPullUpResistor(GPIO_PORT_P2, GPIO_PIN1 | GPIO_PIN2 | GPIO_PIN3 | GPIO_PIN4 |GPIO_PIN5);
 
     // PWM 输出, PWM 输出是 Pin 的第二功能
     GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_P1,GPIO_PIN2 + GPIO_PIN3);

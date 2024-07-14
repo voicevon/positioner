@@ -1,3 +1,6 @@
+
+
+
 code with driverlib tutorial   
 https://embedded-lab.com/blog/tinkering-ti-msp430f5529/3/ 
 
@@ -23,7 +26,15 @@ https://embedded-lab.com/blog/tinkering-ti-msp430f5529/3/
 
 
 
-9 Timer Overview
+# 9 Timer Overview
+[timers of F5529](https://embedded-lab.com/blog/tinkering-ti-msp430f5529/9/#:~:text=MSP430F5529%20microcontroller%20has%20six%20timers,Real%20Time%20Clock%20(RTC).&text=The%20cut%2Daway%20block%20diagram,shown%20below%20highlights%20these%20timers.)
+
+There are 6 timers in 3 catagories
+* T0A  5CC
+* T1A  3CC
+* T2A  3CC
+* Real Time Clock A
+* Watchdog Timer A
 
 10 Free-Running Timer – TA0
 
@@ -98,3 +109,4 @@ https://embedded-lab.com/blog/tinkering-ti-msp430f5529/3/
 
 
 
+[Offical download website](https://www.ti.com/tool/MSPDRIVERLIB#downloads)

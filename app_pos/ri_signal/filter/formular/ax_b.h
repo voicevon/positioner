@@ -11,7 +11,7 @@ class Ax_B : public FilterBase {
 		void SetKnownPoint(double x, double y) override;
 
 	protected:
-		double ProcessSignal_(double value) override;
+		int ProcessSignal_(int value) override;
 
     private:
         double slope__ = 1.0;

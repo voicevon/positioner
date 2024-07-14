@@ -1,4 +1,6 @@
 #include "app_motor.h"
+#include "driverlib.h"
+#include "timer_b.h"
 
 #define FILE_NAME_ADC_AT_MIN "adc_min"
 #define FILE_NAME_ADC_AT_MAX "adc_max"
@@ -16,20 +18,22 @@ void Motor::SetAdc(unsigned int adc_value){
     this->current_adc = adc_value;
     this->PV = this->filter_adc_to_percent.Feed(adc_value);
     this->velocity =  this->filter_dt.Feed(adc_value);
-    this->PV = 0.5;
+    // this->PV = 0.5;
 }
 
-double Motor::GetSpeed(){
+int Motor::GetSpeed(){
     return abs(this->velocity);
 }
-double Motor::GetVelocity(){
+int Motor::GetVelocity(){
     return this->velocity;
 }
 void Motor::SetForce(unsigned int force){
-    // pwm_output__->UpdateDuty(force);
+    // Timer_A_setCompareValue(TIMER_A0_BASE, TIMER_A_CAPTURECOMPARE_REGISTER_1, force);
+    Timer_B_setCompareValue(TIMER_B0_BASE, TIMER_B_CAPTURECOMPARE_REGISTER_5, force);    // P3.5 pwm output
 }
 void Motor::ForceUp(int offset){
     force += offset;
+    // overflow issue ?
     this->SetForce(force);
 }
 

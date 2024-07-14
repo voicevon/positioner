@@ -1,3 +1,5 @@
+[Timer A Module datasheet](https://www.ti.com/lit/ug/slau400f/slau400f.pdf?ts=1720784925879&ref_url=https%253A%252F%252Fwww.google.com%252F)
+
 [Using the Real-Time Clock library](https://www.ti.com/lit/an/slaa290a/slaa290a.pdf?ts=1720161210287&ref_url=https%253A%252F%252Fwww.google.com%252F#:~:text=It%20is%20often%20the%20case,and%20displays%20the%20current%20time.)
 * 一秒是最小时间单位。
 * 我们继续寻找 ms 为单位的  api. 

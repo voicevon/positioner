@@ -43,7 +43,7 @@ class PIDController: public FilterBase{
 		void SetKnownPoint(double x, double y) override{}
 
     protected:
-		double ProcessSignal_(double value) override{return 0.0;}  // Feedback signal.  Not command signal
+		int ProcessSignal_(int value) override{return 0;}  // Feedback signal.  Not command signal
 
         bool direction_is_positive_driving__ = true;
         double setpoint__ = 0;

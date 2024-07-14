@@ -14,7 +14,7 @@ void FilterBase::AppendFollower(const char* interest_result_item, FilterBase* fi
 }
 
 
-double FilterBase::Feed(double new_value){
+int FilterBase::Feed(int new_value){
     result_value_ = ProcessSignal_(new_value);
     return result_value_;
     // double master_result = result_value_;

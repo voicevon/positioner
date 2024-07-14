@@ -11,7 +11,7 @@ void Ax_B::Reset(){
     known_y2 = NAN;
 }
 
-double Ax_B::ProcessSignal_(double x) {
+int Ax_B::ProcessSignal_(int x) {
     result_value_ = slope__ * x + offset__;
     return result_value_;
 }

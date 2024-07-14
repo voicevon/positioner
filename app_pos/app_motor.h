@@ -10,10 +10,10 @@
 class Motor{
     public:
         Motor();
-        double PV;
+        int PV;
         void SetAdc(unsigned int adc_value);
-        double GetSpeed();
-        double GetVelocity();
+        int GetSpeed();
+        int GetVelocity();
         void SetForce(unsigned force);
         void ForceUp(int offset);
 
@@ -28,8 +28,8 @@ class Motor{
 
     private:
         signalx::Ax_B  filter_adc_to_percent = signalx::Ax_B(1.0, 0);
-        signalx::DifferentTime filter_dt = signalx::DifferentTime(1.0);
-        double velocity;
+        signalx::DifferentTime filter_dt = signalx::DifferentTime(0.5);
+        int velocity;
         unsigned int force;
         // gpio::GpioPwm* pwm_output__;
         unsigned int adc_at_position_min__ = 0;

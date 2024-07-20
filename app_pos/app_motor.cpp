@@ -1,10 +1,77 @@
-#include "app_motor.h"
 #include "driverlib.h"
+
+#include "app_motor.h"
+#include "msp430f5529.h"
 #include "timer_b.h"
+#include <algorithm>
+#include <vector>
 
 #define FILE_NAME_ADC_AT_MIN "adc_min"
 #define FILE_NAME_ADC_AT_MAX "adc_max"
 
+
+#define INFOA_START     0x1980
+#define INFOA_END       0x19FF
+
+#define INFOB_START     0x1900
+#define INFOB_END       0x197F
+
+#define INFOC_START     0x1880
+#define INFOC_END       0x18FF
+
+#define INFOD_START     0x1800
+#define INFOD_END       0x187F
+
+// char Flash_Read_Char(unsigned int address);
+unsigned int Flash_Read_Word(unsigned int address);
+
+extern void UART_printf(uint16_t baseAddress, const char *format,...);
+char Flash_Read_Char(unsigned int address)
+{
+    char value = 0x00;
+    char *FlashPtr = (char *)address;
+
+    value = *FlashPtr;
+
+    return value;
+}
+
+unsigned int Flash_Read_Word(unsigned int address)
+{
+    unsigned int value = 0x0000;
+    unsigned int *FlashPtr = (unsigned int *)address;
+
+    value = *FlashPtr;
+
+    return value;
+}
+
+void write_eeprom(){
+    unsigned char temp = 0x00;
+    unsigned int status = 0x0000;
+    unsigned char* set_values;
+    // CRC 模块需要一个种子， 0xABCD是随机选择的一个种子值。
+    CRC_setSeed(CRC_BASE, 0xABCD);
+    CRC_set8BitData(CRC_BASE, Flash_Read_Char(INFOB_START));
+    temp = CRC_getResult(CRC_BASE);
+    if(temp != Flash_Read_Char(INFOB_START + 1))
+    {
+        // 擦除整个 Info B segment ， 共 128 bytes.
+        do
+        {
+            FlashCtl_eraseSegment((unsigned char *)INFOB_START);
+            status = FlashCtl_performEraseCheck((unsigned char *)INFOB_START, 128);
+        }while(status == STATUS_FAIL);
+    }
+    //  FlashCtl_write8(set_values, (unsigned char *)INFOA_START, 4);
+    //  FlashCtl_lockInfoA();
+
+}
+
+void Motor::Dump(const char* title){
+    UART_printf(USCI_A1_BASE, title);
+    UART_printf(USCI_A1_BASE, "    adc= %d, velocity= %d  \n", this->current_adc, this->velocity);
+}
 
 Motor::Motor(){
     // int io_num = 26;   
@@ -12,21 +79,63 @@ Motor::Motor(){
 	// ledc_timer_bit_t pwm_resolution = LEDC_TIMER_14_BIT;
 	// pwm_output__ = new gpio::GpioPwm(io_num);
 	// pwm_output__->InitPwm(pwm_frequency, pwm_resolution);
+    adc_at_position_min__ != Flash_Read_Word(INFOB_START);
+    adc_at_position_max__ != Flash_Read_Word(INFOB_START+2);
 }
+
+
+#define FILTER_WINDOW_SIZE  5
 
 void Motor::SetAdc(unsigned int adc_value){
-    this->current_adc = adc_value;
-    this->PV = this->filter_adc_to_percent.Feed(adc_value);
-    this->velocity =  this->filter_dt.Feed(adc_value);
-    // this->PV = 0.5;
+    static int history_head = 0;
+    static std::vector<int>  v_adc(FILTER_WINDOW_SIZE);  // 这个变量，无法被 调试程序  to watch.
+    static previous_adc;   // 滤波之后的
+
+    // 把 ADC 放入到历史队列中，用于计算 滤波 
+    adc_history__[history_head] = adc_value;
+    history_head++;
+    if (history_head >= FILTER_WINDOW_SIZE){
+        history_head = 0;
+    }
+
+    // 使用 中值滤波器， 窗口宽度= 5
+    // std::vector<int> v_adc;
+    for(int i=0; i < FILTER_WINDOW_SIZE; i++){
+        // v_adc.push_back(adc_history__[i]);      //会使用 heap ， 430要小心
+        v_adc[i] = adc_history__[i];
+    }
+    std::sort(v_adc.begin(), v_adc.end());
+
+    int filtered_adc = v_adc[FILTER_WINDOW_SIZE / 2];
+    this->current_adc = filtered_adc;
+    this->PV = this->filter_adc_to_percent.Feed(filtered_adc);
+
+    this->velocity = current_adc - previous_adc;
+
+    previous_adc =  current_adc;
+
+    // 这种算法， 最先的 10 次 velocity 是无效的，因为没有初始化 adc_history[10];
+    // int history_tail = history_head + 1;
+    // if (history_tail >=10){
+    //     history_tail = 0;
+    // }    
+    // this->velocity = adc_value - adc_history__[history_tail];
+
+    // for temp debug
+    // if ((velocity > 100 ) || (velocity < -100)){
+    //     UART_printf(USCI_A1_BASE, "xx\n");
+    // }
+
+
 }
 
-int Motor::GetSpeed(){
-    return abs(this->velocity);
-}
 int Motor::GetVelocity(){
     return this->velocity;
 }
+int Motor::GetSpeed(){
+    return abs(this->velocity);
+}
+
 void Motor::SetForce(unsigned int force){
     // Timer_A_setCompareValue(TIMER_A0_BASE, TIMER_A_CAPTURECOMPARE_REGISTER_1, force);
     Timer_B_setCompareValue(TIMER_B0_BASE, TIMER_B_CAPTURECOMPARE_REGISTER_5, force);    // P3.5 pwm output

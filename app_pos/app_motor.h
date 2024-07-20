@@ -25,14 +25,20 @@ class Motor{
         void UpdateFilter();
         void SaveToFile();
 
+        void Dump(const char* title);
+        
 
     private:
         signalx::Ax_B  filter_adc_to_percent = signalx::Ax_B(1.0, 0);
-        signalx::DifferentTime filter_dt = signalx::DifferentTime(0.5);
         int velocity;
         unsigned int force;
-        // gpio::GpioPwm* pwm_output__;
         unsigned int adc_at_position_min__ = 0;
         unsigned int adc_at_position_max__ = 0;
         unsigned int current_adc = 0;
+
+        // ADC 历史队列，用于计算 velocity.
+        int adc_history__[10];
+        // // 最新采集到的 ADC
+        // int history_head = 0;
+
 };

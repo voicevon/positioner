@@ -19,9 +19,7 @@ class DifferentTime : public FilterBase {
     private:
 		double sensitivity__ = 1;
 		int feed_count__ = 0;
-		// uint32_t previous_timestamp__;
 		int previous_position__;
-		// double speed__;
 
 };
 

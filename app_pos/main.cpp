@@ -5,6 +5,7 @@
 #include "./ri_signal/filter/formular/ax_b.h"
 #include "gpio.h"
 #include "intrinsics.h"
+#include "msp430f5529.h"
 #include "timer_a.h"
 #include "app_motor.h"
 
@@ -16,9 +17,11 @@ extern void init_ADC12(void);
 // extern void init_PWM_TIMER_A0(void);
 extern void init_PWM_TIMER_B0(void);
 extern void init_timer_T1A1(void);
+extern bool init_UART(uint16_t baseAddress, uint32_t Baudrate);
+extern void UART_printf(uint16_t baseAddress, const char *format,...);
 
 // extern int check_keys();
-volatile bool g_timer_10ms_flag = true;
+volatile bool g_timer_10ms_flag = false;
 
 int check_keys();
 
@@ -38,6 +41,7 @@ enum Enum_State{
 };
 
 Enum_State  g_state = Enum_State::IDLE;
+int g_uptime_per_10ms = 0;
 static int idle_down_counter = 50;
 
 unsigned long adc_result[2] ={0, 0};
@@ -47,6 +51,7 @@ signalx::PIDController my_pid_main = signalx::PIDController(1, 0, 0, 999,999);
 
 void to_state(Enum_State new_state){
 	// printf("g_state is chaning from:  %s  to:  %s", AppMain::GetStateName(g_state), AppMain::GetStateName(new_state));
+    // UART_printf(USCI_A1_BASE, "from %s, to %s", g_state, new_state);
 	g_state = new_state;
 }
 
@@ -80,26 +85,35 @@ void state_machine(){
 			default:
 				// 显示当前开度
 
-				// PID 控制
-				force = my_pid_main.FeedBack(my_motor.PV);
-				my_motor.SetForce(force);
+				// PID 控制。 当前还不敢运行之。
+				// force = my_pid_main.FeedBack(my_motor.PV);
+				// my_motor.SetForce(force);
+
+                // 仅为了调试方便，无需按钮，直接进入一级标定，
                 g_state =  MOTOR_CAL_MOVE_TO_MAX;
+                UART_printf(USCI_A1_BASE, "to state:  MOTOR_CAL_MOVE_TO_MAX\n");
 				break;
 			} 
 			break;
 		case MOTOR_CAL_MOVE_TO_MAX:
-			if (my_motor.GetVelocity() < 50){
+			if (my_motor.GetVelocity() < 10){
 				// 没有达到预期速度，增加力度
+                my_motor.Dump("MOVE_TO_MAX  ");
 				my_motor.ForceUp(10);
 			}else{
 				// 开始正确方向移动了， 记住 这时候的 force 值
+                my_motor.Dump("MOV_TO_MAX  ");
+
 				my_motor.SaveForce_ForwardMin();
 				to_state(MOTOR_CAL_MOVING_TO_MAX);
+                UART_printf(USCI_A1_BASE, "---------------------------------------------------------->  MOVING_TO_MAX\n");
 			}
 			break;
 		case MOTOR_CAL_MOVING_TO_MAX:
-			if (my_motor.GetVelocity() < 50){
+            my_motor.Dump("MOVING_TO_MAX  ");
+			if (my_motor.GetVelocity() < 1){
 				// 到达开度最大位置
+                UART_printf(USCI_A1_BASE, "---------------------------------------------------------->   GOT_MAX_POSITION");
 				my_motor.SavePosition_Max();
 				my_motor.ForceUp(-100);
 				to_state(MOTOR_CAL_MOVE_TO_MIN);
@@ -109,6 +123,7 @@ void state_machine(){
 			if (my_motor.GetVelocity() > -500){
 				//没有移动，增加力度。
 				my_motor.ForceUp(-3);
+
 			} else {
 				//开始向 Min方向移动了, 记录这个力度。
 				my_motor.SaveForce_BackwardMax();
@@ -122,12 +137,17 @@ void state_machine(){
 				//motor标定结束，应用并保存标定结果。
 				my_motor.UpdateFilter();
 				my_motor.SaveToFile();
-				to_state(IDLE);
+				// to_state(IDLE);
 			}
 			break;
 		default:
 			break;
 		}
+}
+
+
+void load_config(){
+
 }
 
 void main(void)
@@ -141,24 +161,44 @@ void main(void)
     // init_PWM_TIMER_A0();
     init_PWM_TIMER_B0();
     init_timer_T1A1();
+    init_UART(USCI_A1_BASE, 9600);
 
     __enable_interrupt();
 
+    UART_printf(USCI_A1_BASE, "Hello world");
+    UART_printf(USCI_A1_BASE, "\n%d\n", 9600);
+    // 进入休眠，10ms定时器 将 唤醒系统
+    __bis_SR_register(LPM0_bits + GIE);
+    //for Debugger ?
+    __no_operation();
     while(1)
     {   
-        if (g_timer_10ms_flag){
-            // 10ms 进入一次
-            g_timer_10ms_flag = false;
-
-            // 是否要判断  is_busy() ?
-            adc_result[0] = ADC12_A_getResults(ADC12_A_BASE, ADC12_A_MEMORY_0);
-            adc_result[1] = ADC12_A_getResults(ADC12_A_BASE, ADC12_A_MEMORY_1);
-
-            my_motor.SetAdc(adc_result[0]);
-            state_machine();
             // 启动 ADC 多通道 单次转换。
             ADC12_A_startConversion(ADC12_A_BASE, ADC12_A_MEMORY_0, ADC12_A_SEQOFCHANNELS);
-        }
+            // 进入休眠状态，ADC12_A 转换完毕后，系统被唤醒，继续运行
+            // __bis_SR_register(LPM0_bits + GIE);
+            //for Debugger ?
+            // __no_operation();
+            my_motor.SetAdc(adc_result[0]);
+            // UART_printf(USCI_A1_BASE, "adc=%d, velocity=%d \n ", adc_result[0], my_motor.GetVelocity());
+            state_machine();
+
+
+            // 再次进入休眠，10ms定时器 将 唤醒系统
+            __bis_SR_register(LPM0_bits + GIE);
+            //for Debugger ?
+            __no_operation();
+
+
+            //1秒反转 LED, 确认定时正确
+            g_uptime_per_10ms++;            
+            if (g_uptime_per_10ms % 100 == 0){
+                
+                GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN7);
+                if (g_uptime_per_10ms % 200 == 0){
+                    GPIO_setOutputHighOnPin(GPIO_PORT_P4, GPIO_PIN7);
+                }
+            }
     }
 }
 
@@ -166,13 +206,19 @@ void main(void)
 #pragma vector = TIMER1_A1_VECTOR
 __interrupt void Timer_A1_ISR(void)
 {
-    static int ms_counter = 0;
+    // CPU不会自动清除这个 中断标志 ？
     Timer_A_clearTimerInterrupt(TIMER_A1_BASE);
-    ms_counter++;
-    if (ms_counter >=10){
-        // 每 10ms 进入一次
-        g_timer_10ms_flag = true;
-        ms_counter = 0;
-    }
+
+    // 退出休眠模式，主程序可以继续
+    __bic_SR_register_on_exit(LPM0_bits);
+
+    // g_uptime_per_10ms++;
+    // if (g_uptime_per_10ms % 100 == 0){
+    //     //反转 LED, 确认定时正确
+    //     GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN7);
+    //     if (g_uptime_per_10ms % 200 == 0){
+    //         GPIO_setOutputHighOnPin(GPIO_PORT_P4, GPIO_PIN7);
+    //     }
+    // }
 }
 

@@ -1,84 +1,25 @@
-#include "driverlib.h"
-
 #include "app_motor.h"
+
 #include "msp430f5529.h"
 #include "timer_b.h"
 #include <algorithm>
 #include <vector>
+#include "driverlib.h"
 
-#define FILE_NAME_ADC_AT_MIN "adc_min"
-#define FILE_NAME_ADC_AT_MAX "adc_max"
-
-
-#define INFOA_START     0x1980
-#define INFOA_END       0x19FF
-
-#define INFOB_START     0x1900
-#define INFOB_END       0x197F
-
-#define INFOC_START     0x1880
-#define INFOC_END       0x18FF
-
-#define INFOD_START     0x1800
-#define INFOD_END       0x187F
-
-// char Flash_Read_Char(unsigned int address);
-unsigned int Flash_Read_Word(unsigned int address);
+// #define FILE_NAME_ADC_AT_MIN "adc_min"
+// #define FILE_NAME_ADC_AT_MAX "adc_max"
 
 extern void UART_printf(uint16_t baseAddress, const char *format,...);
-char Flash_Read_Char(unsigned int address)
-{
-    char value = 0x00;
-    char *FlashPtr = (char *)address;
+extern unsigned int Flash_Read_Word(unsigned int address);
 
-    value = *FlashPtr;
-
-    return value;
-}
-
-unsigned int Flash_Read_Word(unsigned int address)
-{
-    unsigned int value = 0x0000;
-    unsigned int *FlashPtr = (unsigned int *)address;
-
-    value = *FlashPtr;
-
-    return value;
-}
-
-void write_eeprom(){
-    unsigned char temp = 0x00;
-    unsigned int status = 0x0000;
-    unsigned char* set_values;
-    // CRC 模块需要一个种子， 0xABCD是随机选择的一个种子值。
-    CRC_setSeed(CRC_BASE, 0xABCD);
-    CRC_set8BitData(CRC_BASE, Flash_Read_Char(INFOB_START));
-    temp = CRC_getResult(CRC_BASE);
-    if(temp != Flash_Read_Char(INFOB_START + 1))
-    {
-        // 擦除整个 Info B segment ， 共 128 bytes.
-        do
-        {
-            FlashCtl_eraseSegment((unsigned char *)INFOB_START);
-            status = FlashCtl_performEraseCheck((unsigned char *)INFOB_START, 128);
-        }while(status == STATUS_FAIL);
-    }
-    //  FlashCtl_write8(set_values, (unsigned char *)INFOA_START, 4);
-    //  FlashCtl_lockInfoA();
-
-}
 
 void Motor::Dump(const char* title){
     UART_printf(USCI_A1_BASE, title);
     UART_printf(USCI_A1_BASE, "    adc= %d, velocity= %d  \n", this->current_adc, this->velocity);
 }
 
+#define INFOB_START     0x1900
 Motor::Motor(){
-    // int io_num = 26;   
-	// unsigned int pwm_frequency = 200;
-	// ledc_timer_bit_t pwm_resolution = LEDC_TIMER_14_BIT;
-	// pwm_output__ = new gpio::GpioPwm(io_num);
-	// pwm_output__->InitPwm(pwm_frequency, pwm_resolution);
     adc_at_position_min__ != Flash_Read_Word(INFOB_START);
     adc_at_position_max__ != Flash_Read_Word(INFOB_START+2);
 }

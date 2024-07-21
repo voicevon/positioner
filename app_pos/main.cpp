@@ -1,13 +1,16 @@
 #include "adc12_a.h"
 #include "driverlib.h"
 #include "delay.h"
-#include "./ri_signal/pid/pid.h"
-#include "./ri_signal/filter/formular/ax_b.h"
 #include "gpio.h"
 #include "intrinsics.h"
 #include "msp430f5529.h"
 #include "timer_a.h"
 #include "app_motor.h"
+#include "./ri_signal/pid/pid.h"
+#include "./ri_signal/filter/formular/ax_b.h"
+#include "app_type.h"
+#include "app_hmi.h"
+
 
 
 extern void init_CLOCK(void);
@@ -25,27 +28,13 @@ volatile bool g_timer_10ms_flag = false;
 
 int check_keys();
 
-enum Enum_State{
-    IDLE = 0,
-    WORKING = 1,
-    MOTOR_CAL_MOVE_TO_MAX = 2,
-    MOTOR_CAL_MOVING_TO_MAX =3,
-    MOTOR_CAL_MOVE_TO_MIN = 4,
-    MOTOR_CAL_MOVING_TO_MIN = 5,
-    PID_CAL_ON_KP_RESET,
-    PID_CAL_KP,
-    PID_CAL_ON_KI_RESET,
-    PID_CAL_KI,
-    PID_CAL_ON_KD_RESET,
-    PID_CAL_KD,
-};
-
 Enum_State  g_state = Enum_State::IDLE;
 int g_uptime_per_10ms = 0;
 static int idle_down_counter = 50;
 
 unsigned long adc_result[2] ={0, 0};
 Motor my_motor = Motor();
+Hmi my_hmi = Hmi();
 signalx::PIDController my_pid_main = signalx::PIDController(1, 0, 0, 999,999);
 
 
@@ -146,10 +135,6 @@ void state_machine(){
 }
 
 
-void load_config(){
-
-}
-
 void main(void)
 {
     WDT_A_hold(WDT_A_BASE);
@@ -160,13 +145,15 @@ void main(void)
     init_ADC12();
     // init_PWM_TIMER_A0();
     init_PWM_TIMER_B0();
-    init_timer_T1A1();
+    my_hmi.setup_pcf85176(); // 内部初始化 I2C-Master, 因为只有一个I2C device. 
     init_UART(USCI_A1_BASE, 9600);
-
+    init_timer_T1A1();  // 主定时器， 每 10 ms 中断一次，用户唤醒主任务，
     __enable_interrupt();
 
-    UART_printf(USCI_A1_BASE, "Hello world");
-    UART_printf(USCI_A1_BASE, "\n%d\n", 9600);
+    // UART_printf(USCI_A1_BASE, "Hello world");
+    // UART_printf(USCI_A1_BASE, "\n%d\n", 9600);
+
+
     // 进入休眠，10ms定时器 将 唤醒系统
     __bis_SR_register(LPM0_bits + GIE);
     //for Debugger ?

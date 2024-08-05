@@ -2,34 +2,99 @@
 #include "driverlib.h"
 #include "intrinsics.h"
 #include "machine/_types.h"
+#include "msp430f5529.h"
 #include "msp430f5xx_6xxgeneric.h"
+#include "usci_b_i2c.h"
 
-void I2C_DIO_init(void)
-{
-    // 设置 GPIO　第二功能 P4.1 SDA,   P4.2 SCL
-    #define I2C_SDA_pin 1
-    #define I2C_SCL_pin 2
-    GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_P4, (I2C_SDA_pin | I2C_SCL_pin));
-}
+#include "f5529_i2c.h"
 
-void init_USCI_I2C(void)
-{
-    USCI_B_I2C_initMasterParam I2C_param = {0};
+extern void I2C_init(uint8_t slaveAddress);
+extern void iic_writeByte(uint8_t byte);
 
-    I2C_DIO_init();
+// void I2C_DIO_init(void)
+// {
+//     // 设置 GPIO　第二功能 P4.1 SDA,   P4.2 SCL
+//     #define I2C_SDA_pin 1
+//     #define I2C_SCL_pin 2
+//     GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_P4, (I2C_SDA_pin | I2C_SCL_pin));
+// }
 
-    I2C_param.selectClockSource = USCI_B_I2C_CLOCKSOURCE_SMCLK;
-    I2C_param.i2cClk = UCS_getSMCLK();
-    I2C_param.dataRate = USCI_B_I2C_SET_DATA_RATE_100KBPS;
+// void init_USCI_I2C(void)
+// {
+//     USCI_B_I2C_initMasterParam I2C_param = {0};
 
-    USCI_B_I2C_initMaster(USCI_B1_BASE, &I2C_param);
+//     I2C_DIO_init();
 
-    USCI_B_I2C_enable(USCI_B1_BASE);
+//     I2C_param.selectClockSource = USCI_B_I2C_CLOCKSOURCE_SMCLK;
+//     I2C_param.i2cClk = UCS_getSMCLK();
+//     I2C_param.dataRate = USCI_B_I2C_SET_DATA_RATE_100KBPS;
+
+//     USCI_B_I2C_initMaster(USCI_B1_BASE, &I2C_param);
+
+//     USCI_B_I2C_enable(USCI_B1_BASE);
+// }
+
+
+void Hmi::pcf_write_byte(unsigned char address, unsigned char value){
+    // 第一部分： PCF地址
+    // 第二部分： command, 1个到多个字节
+    // 第三部分： display Data, 0个到多个字节。
+
+
+
+    // 第一个字节： PCF 地址 + /WRITE
+    // 
+    USCI_B_I2C_setSlaveAddress(USCI_B1_BASE, 0x70);
+    USCI_B_I2C_setMode(USCI_B1_BASE, USCI_B_I2C_TRANSMIT_MODE);
+
+    // 第二部分： pcf command + display data. 数据手册 Page 29.
+    // command is one or more bytes,  数据手册 Page 5.
+    // 第一字节 Mode_Set ： 0xc8  or 0xcc
+    //                      1100 1?00 :  bit3=enabled.   bit2=1/3   bit1_0 =BP0,BP1,BP2,BP3
+    // 第二字节 Load_data_pointer: 0x33
+    //                      0011 0011:  
+    //        digits address begin:   ==33 ==0x21 == 0b 0011 0011
+    //        digits address end:     ==40 ==0x28
+    // 
+    
+    unsigned char commands[2] = {0xc8, 0x33};
+    USCI_B_I2C_masterSendMultiByteNext(USCI_B1_BASE, commands[0]);
+    USCI_B_I2C_masterSendMultiByteNext(USCI_B1_BASE, commands[1]);
+
+    // 第三部分： display data
+    // 共4个字节，描述4个 digits.
+    unsigned char digits_segment[4] = {0xff,0xff,0xff,0xff};
+    USCI_B_I2C_masterSendMultiByteNext(USCI_B1_BASE, digits_segment[0]);
+    USCI_B_I2C_masterSendMultiByteNext(USCI_B1_BASE, digits_segment[1]);
+    USCI_B_I2C_masterSendMultiByteNext(USCI_B1_BASE, digits_segment[2]);
+    USCI_B_I2C_masterSendMultiByteFinish(USCI_B1_BASE, digits_segment[3]);
+
+
+
+
+    // USCI_B_I2C_masterSendSingleByte(USCI_B1_BASE, COMMAND);   
+
+    while(! USCI_B_I2C_masterIsStartSent(USCI_B1_BASE)){
+
+    };
+    // USCI_B_I2C_masterSendMultiByteStart(USCI_B1_BASE, uint8_t txData);
+
+
+
 }
 
 void Hmi::setup_pcf85176(){
-    init_USCI_I2C();
-    // I2C address of PCF85176 :  0x70.
+    // I2C_init(56);  // 0x38  == 0b0011,1000
+    I2C_init(0x70 >> 1);  // 0x38  == 0b0011,1000
+
+
+    iic_writeByte(0xc8); 
+    // init_USCI_I2C();
+    // // I2C address of PCF85176 :  0x70.
+    // USCI_B_I2C_setSlaveAddress(USCI_B1_BASE, 0x70);
+    // USCI_B_I2C_setMode(USCI_B1_BASE, USCI_B_I2C_TRANSMIT_MODE);
+
+    // USCI_B_I2C_SENDING_START(0x70);   // LSB should be /WRITE
 
 
 
@@ -83,6 +148,7 @@ void print_int(int x){
         // 每一个数字有 7个segments, 这7个 segments 被分配到4个或者8个 pcf85176的 data buffer中。
         segcode[i] = get_segcode_from_digit(i, digits[i]);
     }
+    
 
     // 每个位置（字符位置）获得码值可能会不同。
     // char* segs = from_str_x(str_x);
@@ -95,3 +161,5 @@ void print_int(int x){
     // i2c.write_bytes(addr, reg_addr,bytes_length, segs);
 
 }
+
+

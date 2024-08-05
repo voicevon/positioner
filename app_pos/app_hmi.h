@@ -1,8 +1,8 @@
 #pragma  once
 
 // pcf85176
+#include "f5529_i2c.h"
 
-#include "app_hmi.h"
 enum Enum_lcd_flag{
     FLAG_HART = 1,
 };
@@ -17,4 +17,7 @@ class Hmi{
         void print_num(double x);
         void print_str(const char* s);
         void show_flag(Enum_lcd_flag flag, bool is_turn_on);
+
+    private:
+        void Hmi::pcf_write_byte(unsigned char address, unsigned char value);
 };
